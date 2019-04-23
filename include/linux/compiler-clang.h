@@ -19,13 +19,6 @@
 #undef inline
 #define inline inline __attribute__((unused)) notrace
 
-#ifdef CONFIG_CC_LTO
-#ifdef CONFIG_FTRACE_MCOUNT_RECORD
-#define __norecordmcount \
-	__attribute__((__section__(".text..ftrace")))
-#endif
-#endif
-
 /* same as gcc, this was present in clang-2.6 so we can assume it works
  * with any version that can compile the kernel
  */

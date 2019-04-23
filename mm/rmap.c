@@ -1324,11 +1324,40 @@ static int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 	pte_t pteval;
 	spinlock_t *ptl;
 	int ret = SWAP_AGAIN;
+	unsigned long sh_address;
+	bool pmd_sharing_possible = false;
+	unsigned long spmd_start, spmd_end;
 	enum ttu_flags flags = (enum ttu_flags)arg;
 
 	/* munlock has nothing to gain from examining un-locked vmas */
 	if ((flags & TTU_MUNLOCK) && !(vma->vm_flags & VM_LOCKED))
 		goto out;
+
+	/*
+	 * Only use the range_start/end mmu notifiers if huge pmd sharing
+	 * is possible.  In the normal case, mmu_notifier_invalidate_page
+	 * is sufficient as we only unmap a page.  However, if we unshare
+	 * a pmd, we will unmap a PUD_SIZE range.
+	 */
+	if (PageHuge(page)) {
+		spmd_start = address;
+		spmd_end = spmd_start + vma_mmu_pagesize(vma);
+
+		/*
+		 * Check if pmd sharing is possible.  If possible, we could
+		 * unmap a PUD_SIZE range.  spmd_start/spmd_end will be
+		 * modified if sharing is possible.
+		 */
+		adjust_range_if_pmd_sharing_possible(vma, &spmd_start,
+								&spmd_end);
+		if (spmd_end - spmd_start != vma_mmu_pagesize(vma)) {
+			sh_address = address;
+
+			pmd_sharing_possible = true;
+			mmu_notifier_invalidate_range_start(vma->vm_mm,
+							spmd_start, spmd_end);
+		}
+	}
 
 	pte = page_check_address(page, mm, address, &ptl, 0);
 	if (!pte)
@@ -1355,6 +1384,30 @@ static int try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 			goto out_unmap;
 		}
   	}
+
+	/*
+	 * Call huge_pmd_unshare to potentially unshare a huge pmd.  Pass
+	 * sh_address as it will be modified if unsharing is successful.
+	 */
+	if (PageHuge(page) && huge_pmd_unshare(mm, &sh_address, pte)) {
+		/*
+		 * huge_pmd_unshare unmapped an entire PMD page.  There is
+		 * no way of knowing exactly which PMDs may be cached for
+		 * this mm, so flush them all.  spmd_start/spmd_end cover
+		 * this PUD_SIZE range.
+		 */
+		flush_cache_range(vma, spmd_start, spmd_end);
+		flush_tlb_range(vma, spmd_start, spmd_end);
+
+		/*
+		 * The ref count of the PMD page was dropped which is part
+		 * of the way map counting is done for shared PMDs.  When
+		 * there is no other sharing, huge_pmd_unshare returns false
+		 * and we will unmap the actual page and drop map count
+		 * to zero.
+		 */
+		goto out_unmap;
+	}
 
 	/* Nuke the page table entry. */
 	flush_cache_page(vma, address, page_to_pfn(page));
@@ -1444,6 +1497,9 @@ out_unmap:
 	if (ret != SWAP_FAIL && ret != SWAP_MLOCK && !(flags & TTU_MUNLOCK))
 		mmu_notifier_invalidate_page(mm, address);
 out:
+	if (pmd_sharing_possible)
+		mmu_notifier_invalidate_range_end(vma->vm_mm,
+							spmd_start, spmd_end);
 	return ret;
 }
 
@@ -1475,12 +1531,9 @@ static int page_not_mapped(struct page *page)
  * try_to_unmap - try to remove all page table mappings to a page
  * @page: the page to get unmapped
  * @flags: action and flags
- * @vma : target vma for reclaim
  *
  * Tries to remove all the page table entries which are mapping this
  * page, used in the pageout path.  Caller must hold the page lock.
- * If @vma is not NULL, this function try to remove @page from only @vma
- * without peeking all mapped vma for @page.
  * Return values are:
  *
  * SWAP_SUCCESS	- we succeeded in removing all mappings
@@ -1488,8 +1541,7 @@ static int page_not_mapped(struct page *page)
  * SWAP_FAIL	- the page is unswappable
  * SWAP_MLOCK	- page is mlocked.
  */
-int try_to_unmap(struct page *page, enum ttu_flags flags,
-				struct vm_area_struct *vma)
+int try_to_unmap(struct page *page, enum ttu_flags flags)
 {
 	int ret;
 	struct rmap_walk_control rwc = {
@@ -1497,7 +1549,6 @@ int try_to_unmap(struct page *page, enum ttu_flags flags,
 		.arg = (void *)flags,
 		.done = page_not_mapped,
 		.anon_lock = page_lock_anon_vma_read,
-		.target_vma = vma,
 	};
 
 	VM_BUG_ON_PAGE(!PageHuge(page) && PageTransHuge(page), page);
@@ -1543,7 +1594,6 @@ int try_to_munlock(struct page *page)
 		.arg = (void *)TTU_MUNLOCK,
 		.done = page_not_mapped,
 		.anon_lock = page_lock_anon_vma_read,
-		.target_vma = NULL,
 
 	};
 
@@ -1605,11 +1655,6 @@ static int rmap_walk_anon(struct page *page, struct rmap_walk_control *rwc)
 	struct anon_vma_chain *avc;
 	int ret = SWAP_AGAIN;
 
-       if (rwc->target_vma) {
-               unsigned long address = vma_address(page, rwc->target_vma);
-               return rwc->rmap_one(page, rwc->target_vma, address, rwc->arg);
-       }
-
 	anon_vma = rmap_walk_anon_lock(page, rwc);
 	if (!anon_vma)
 		return ret;
@@ -1652,7 +1697,6 @@ static int rmap_walk_file(struct page *page, struct rmap_walk_control *rwc)
 	struct address_space *mapping = page->mapping;
 	pgoff_t pgoff;
 	struct vm_area_struct *vma;
-	unsigned long address;
 	int ret = SWAP_AGAIN;
 
 	/*
@@ -1668,12 +1712,6 @@ static int rmap_walk_file(struct page *page, struct rmap_walk_control *rwc)
 
 	pgoff = page_to_pgoff(page);
 	i_mmap_lock_read(mapping);
-	if (rwc->target_vma) {
-               address = vma_address(page, rwc->target_vma);
-               ret = rwc->rmap_one(page, rwc->target_vma, address, rwc->arg);
-               goto done;
-	}
-
 	vma_interval_tree_foreach(vma, &mapping->i_mmap, pgoff, pgoff) {
 		unsigned long address = vma_address(page, vma);
 

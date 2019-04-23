@@ -26,6 +26,7 @@ struct sched_param {
 #include <linux/nodemask.h>
 #include <linux/mm_types.h>
 #include <linux/preempt.h>
+#include <linux/mm_event.h>
 
 #include <asm/page.h>
 #include <asm/ptrace.h>
@@ -1808,6 +1809,10 @@ struct task_struct {
 	struct rt_mutex_waiter *pi_blocked_on;
 #endif
 
+#ifdef CONFIG_MM_EVENT_STAT
+	struct mm_event_task	mm_event[MM_TYPE_NUM];
+	unsigned long		next_period;
+#endif
 #ifdef CONFIG_DEBUG_MUTEXES
 	/* mutex deadlock detection */
 	struct mutex_waiter *blocked_on;
@@ -2885,6 +2890,7 @@ static inline void set_task_comm(struct task_struct *tsk, const char *from)
 {
 	__set_task_comm(tsk, from, false);
 }
+
 extern char *__get_task_comm(char *to, size_t len, struct task_struct *tsk);
 #define get_task_comm(buf, tsk) ({			\
 	BUILD_BUG_ON(sizeof(buf) != TASK_COMM_LEN);	\

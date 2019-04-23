@@ -4767,6 +4767,7 @@ void ftrace_destroy_filter_files(struct ftrace_ops *ops)
 	if (ops->flags & FTRACE_OPS_FL_ENABLED)
 		ftrace_shutdown(ops, 0);
 	ops->flags |= FTRACE_OPS_FL_DELETED;
+	ftrace_free_filter(ops);
 	mutex_unlock(&ftrace_lock);
 }
 
@@ -4805,9 +4806,9 @@ static int ftrace_cmp_ips(const void *a, const void *b)
 	return 0;
 }
 
-static int __norecordmcount ftrace_process_locs(struct module *mod,
-						unsigned long *start,
-						unsigned long *end)
+static int ftrace_process_locs(struct module *mod,
+			       unsigned long *start,
+			       unsigned long *end)
 {
 	struct ftrace_page *start_pg;
 	struct ftrace_page *pg;
