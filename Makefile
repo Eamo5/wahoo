@@ -759,10 +759,8 @@ KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, attribute-alias)
 KBUILD_CFLAGS += $(call cc-disable-warning, packed-not-aligned)
-KBUILD_CFLAGS += $(call cc-disable-warning, stringop-truncation)
 endif
 
-KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 ifdef CONFIG_FRAME_POINTER
 KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
 else
