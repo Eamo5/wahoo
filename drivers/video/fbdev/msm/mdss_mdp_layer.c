@@ -2713,6 +2713,7 @@ int __is_cwb_requested(uint32_t commit_flags)
 int mdss_mdp_layer_pre_commit(struct msm_fb_data_type *mfd,
 	struct file *file, struct mdp_layer_commit_v1 *commit)
 {
+	struct mdss_mdp_validate_info_t validate_info_list[MAX_LAYER_COUNT];
 	int ret, i;
 	int layer_count = commit->input_layer_cnt;
 	bool validate_failed = false;
@@ -2721,7 +2722,6 @@ int mdss_mdp_layer_pre_commit(struct msm_fb_data_type *mfd,
 	struct mdp_input_layer *layer_list;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_data *src_data[MDSS_MDP_MAX_SSPP];
-	struct mdss_mdp_validate_info_t *validate_info_list;
 	struct mdss_mdp_ctl *sctl = NULL;
 
 	mdp5_data = mfd_to_mdp5_data(mfd);
@@ -2762,10 +2762,8 @@ int mdss_mdp_layer_pre_commit(struct msm_fb_data_type *mfd,
 		return 0;
 	}
 
-	validate_info_list = kcalloc(layer_count, sizeof(*validate_info_list),
-				     GFP_KERNEL);
-	if (!validate_info_list)
-		return -ENOMEM;
+	memset(validate_info_list, 0,
+	       sizeof(*validate_info_list) * layer_count);
 
 	for (i = 0; i < layer_count; i++) {
 		if (!validate_info_list[i].layer) {
@@ -2774,7 +2772,7 @@ int mdss_mdp_layer_pre_commit(struct msm_fb_data_type *mfd,
 			if (IS_ERR_VALUE(ret)) {
 				pr_err("error updating multirect config. ret=%d i=%d\n",
 					ret, i);
-				goto end;
+				return ret;
 			}
 		}
 	}
@@ -2792,7 +2790,7 @@ int mdss_mdp_layer_pre_commit(struct msm_fb_data_type *mfd,
 		ret = __validate_layers(mfd, file, commit);
 		if (ret) {
 			pr_err("__validate_layers failed. rc=%d\n", ret);
-			goto end;
+			return ret;
 		}
 	} else {
 		/*
@@ -2862,8 +2860,6 @@ map_err:
 				mdss_mdp_overlay_buf_free(mfd, src_data[i]);
 		mutex_unlock(&mdp5_data->list_lock);
 	}
-end:
-	kfree(validate_info_list);
 
 	return ret;
 }
