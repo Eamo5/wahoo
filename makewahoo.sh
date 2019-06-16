@@ -1,6 +1,6 @@
 #!/bin/bash
 ## Wahoo Kernel Build Script by @Eamo5
-# Syntax - ./makewahoo.sh (branch) (gcc-version) (clean)
+# Syntax - ./makewahoo.sh (branch) (gcc-version) (clean) (date)
 # ie. ./makewahoo.sh sultan gcc8 oc
 # If no parameters are passed, the script defaults to the current branch with GCC 8. LOWERCASE ONLY!
 ## To add:
@@ -20,6 +20,11 @@ SULTAN_Q_ZIP=${HOME}/kernels/zip-wahoo-sultan-q/
 SULTAN_UNIFIED_ZIP=${HOME}/kernels/zip-wahoo-sultan-unified/
 ALT_ZIP=${HOME}/kernels/zip-wahoo/
 ZIP_OUTPUT_DIR=${HOME}/kernels/zips/
+if  [ "$3" ] && [ "$4" != "" ]; then
+	VERSION_DATE=$4
+else [ "$4" ]
+	VERSION_DATE=$3
+fi
 
 ## Kernel Directory
 
@@ -37,6 +42,9 @@ case $2 in
 	gcc-9.1)
 		export CROSS_COMPILE="ccache ${TOOLCHAIN_DIR}aarch64-elf-gcc/bin/aarch64-elf-"
 		export CROSS_COMPILE_ARM32="ccache ${TOOLCHAIN_DIR}arm-eabi-gcc/bin/arm-eabi-" ;;
+	linaro)
+		export CROSS_COMPILE="ccache ${TOOLCHAIN_DIR}linaro-64/bin/aarch64-linux-gnu-"
+		export CROSS_COMPILE_ARM32="ccache ${TOOLCHAIN_DIR}arm-linux-gnueabi-8.1.0/bin/arm-linux-gnueabi-" ;;
 	gcc-8)
 		export CROSS_COMPILE="ccache ${TOOLCHAIN_DIR}aarch64-linux-8.1.0/bin/aarch64-linux-"
 		export CROSS_COMPILE_ARM32="ccache ${TOOLCHAIN_DIR}arm-linux-gnueabi-8.1.0/bin/arm-linux-gnueabi-" ;;
@@ -50,29 +58,29 @@ esac
 
 case $1 in
 	sultan)
-		if  [ "$3" == "clean" ]; then
+		if  [ "$3" == "clean" ] || [ "$4" == "clean" ]; then
 			git reset --hard
 		fi
 		git checkout sultan
-		if  [ "$3" == "clean" ]; then
+		if  [ "$3" == "clean" ] || [ "$4" == "clean" ]; then
 			git reset --hard
 		fi
 		;;
 	sultan-q)
-		if  [ "$3" == "clean" ]; then
+		if  [ "$3" == "clean" ] || [ "$4" == "clean" ]; then
 			git reset --hard
 		fi
 		git checkout sultan-q
-		if  [ "$3" == "clean" ]; then
+		if  [ "$3" == "clean" ] || [ "$4" == "clean" ]; then
 			git reset --hard
 		fi
 		;;
 	sultan-unified)
-		if  [ "$3" == "clean" ]; then
+		if  [ "$3" == "clean" ] || [ "$4" == "clean" ]; then
 			git reset --hard
 		fi
 		git checkout sultan-qp-unified
-		if  [ "$3" == "clean" ]; then
+		if  [ "$3" == "clean" ] || [ "$4" == "clean" ]; then
 			git reset --hard
 		fi
 		;;
@@ -82,7 +90,6 @@ case $1 in
 esac
 
 ## Make
-
 make -j$(nproc) clean
 make -j$(nproc) mrproper
 make -j$(nproc) O=out clean
@@ -125,25 +132,25 @@ case $1 in
 		cd ${SULTAN_ZIP}
 		rm *.zip
 		if [ "$2" == "gcc-9.1" ]; then
-			zip -r Sultan-Kernel----GCC-9.zip *
+			zip -r Sultan-Kernel-"$VERSION_DATE"-GCC-9.zip *
 		else
-			zip -r Sultan-Kernel---.zip *
+			zip -r Sultan-Kernel-"$VERSION_DATE".zip *
 		fi ;;
 	sultan-q)
 		cd ${SULTAN_Q_ZIP}
 		rm *.zip
 		if [ "$2" == "gcc-9.1" ]; then
-			zip -r Sultan-Kernel-Q----GCC-9.zip *
+			zip -r Sultan-Kernel-Q-"$VERSION_DATE"-GCC-9.zip *
 		else
-			zip -r Sultan-Kernel-Q---.zip *
+			zip -r Sultan-Kernel-Q-"$VERSION_DATE".zip *
 		fi ;;
 	sultan-unified)
 		cd ${SULTAN_UNIFIED_ZIP}
 		rm *.zip
 		if [ "$2" == "gcc-9.1" ]; then
-			zip -r Sultan-Kernel-+----GCC-9.zip *
+			zip -r Sultan-Kernel-+-"$VERSION_DATE"-GCC-9.zip *
 		else
-			zip -r Sultan-Kernel-+---.zip *
+			zip -r Sultan-Kernel-+-"$VERSION_DATE".zip *
 		fi ;;
 	other)
 		cd ${ALT_ZIP}
@@ -159,21 +166,21 @@ esac
 case $1 in
 	sultan)
 		if [ "$2" == "gcc-9.1" ]; then
-			cp ${SULTAN_ZIP}Sultan-Kernel----GCC-9.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel----GCC-9.zip
+			cp ${SULTAN_ZIP}Sultan-Kernel-"$VERSION_DATE"-GCC-9.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-"$VERSION_DATE"-GCC-9.zip
 		else
-			cp ${SULTAN_ZIP}Sultan-Kernel---.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel---.zip
+			cp ${SULTAN_ZIP}Sultan-Kernel-"$VERSION_DATE".zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-"$VERSION_DATE".zip
 		fi ;;
 	sultan-q)
 		if [ "$2" == "gcc-9.1" ]; then
-			cp ${SULTAN_Q_ZIP}Sultan-Kernel-Q----GCC-9.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-Q----GCC-9.zip
+			cp ${SULTAN_Q_ZIP}Sultan-Kernel-Q-"$VERSION_DATE"-GCC-9.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-Q-"$VERSION_DATE"-GCC-9.zip
 		else
-			cp ${SULTAN_Q_ZIP}Sultan-Kernel-Q---.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-Q---.zip
+			cp ${SULTAN_Q_ZIP}Sultan-Kernel-Q-"$VERSION_DATE".zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-Q-"$VERSION_DATE".zip
 		fi ;;
 	sultan-unified)
 		if [ "$2" == "gcc-9.1" ]; then
-			cp ${SULTAN_UNIFIED_ZIP}Sultan-Kernel-+----GCC-9.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-+----GCC-9.zip
+			cp ${SULTAN_UNIFIED_ZIP}Sultan-Kernel-+-"$VERSION_DATE"-GCC-9.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-+-"$VERSION_DATE"-GCC-9.zip
 		else
-			cp ${SULTAN_UNIFIED_ZIP}Sultan-Kernel-+---.zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-+---.zip
+			cp ${SULTAN_UNIFIED_ZIP}Sultan-Kernel-+-"$VERSION_DATE".zip ${ZIP_OUTPUT_DIR}Sultan-Kernel-+-"$VERSION_DATE".zip
 		fi ;;
 	other)
 		cp ${ALT_ZIP}Custom-Wahoo.zip ${ZIP_OUTPUT_DIR}Custom-Wahoo.zip ;;
