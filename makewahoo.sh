@@ -20,9 +20,9 @@ SULTAN_Q_ZIP=${HOME}/kernels/zip-wahoo-sultan-q/
 SULTAN_UNIFIED_ZIP=${HOME}/kernels/zip-wahoo-sultan-unified/
 ALT_ZIP=${HOME}/kernels/zip-wahoo/
 ZIP_OUTPUT_DIR=${HOME}/kernels/zips/
-if  [ "$3" ] && [ "$4" != "" ]; then
+if  [ "$3" == "clean" ]; then
 	VERSION_DATE=$4
-else [ "$4" ]
+else
 	VERSION_DATE=$3
 fi
 
