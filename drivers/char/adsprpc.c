@@ -11,6 +11,9 @@
  * GNU General Public License for more details.
  *
  */
+#ifdef CONFIG_DEBUG_FS
+#undef CONFIG_DEBUG_FS
+#endif
 #include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
