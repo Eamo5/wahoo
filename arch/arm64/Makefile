@@ -71,6 +71,12 @@ KBUILD_CFLAGS	+= $(call cc-option, -mpc-relative-literal-loads)
 KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
 KBUILD_AFLAGS	+= $(lseinstr) $(vdso32)
 
+# Align everything to 64-byte cacheline boundaries
+KBUILD_CFLAGS	+= -falign-functions=64
+KBUILD_CFLAGS	+= -falign-labels=64
+KBUILD_CFLAGS	+= -falign-loops=64
+KBUILD_CFLAGS	+= -falign-jumps=64
+
 ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
 KBUILD_CPPFLAGS	+= -mbig-endian
 AS		+= -EB
