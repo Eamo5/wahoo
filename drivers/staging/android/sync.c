@@ -652,7 +652,8 @@ static int sync_fill_pt_info(struct fence *fence, void *data, int size)
 static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 					unsigned long arg)
 {
-	struct sync_fence_info_data *data;
+	u8 data_buf[4096];
+	struct sync_fence_info_data *data = (typeof(data))data_buf;
 	__u32 size;
 	__u32 len = 0;
 	int ret, i;
@@ -696,7 +697,6 @@ static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 		ret = 0;
 
 out:
-	kfree(data);
 
 	return ret;
 }
