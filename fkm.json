@@ -1,0 +1,13 @@
+{
+  "kernel": {
+    "name": "Sultan Kernel for Android R",
+    "version": "v1.0.0",
+    "link": "ttps://github.com/Eamo5/wahoo/releases/download/R-23-02-20/Sultan-Kernel-R-23-02-20.zip",
+    "changelog_url": "https://forum.xda-developers.com/showpost.php?p=79558984&postcount=2",
+    "date": "2020-02-23",
+    "sha1": "d40c1e3ff9ed66815de78fb39cf147519193af04"
+  },
+  "support": {
+    "link": "https://t.me/eamonsbuildsp2"
+  }
+}
